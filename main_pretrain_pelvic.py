@@ -141,7 +141,7 @@ def main(args):
     data_loader_train = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
     
     # define the model
-    model = models_convmae.__dict__[args.model](norm_pix_loss=args.norm_pix_loss)
+    model = models_convmae.__dict__[args.model](in_chans=args.n_slices, norm_pix_loss=args.norm_pix_loss)
 
     model.to(device)
 
