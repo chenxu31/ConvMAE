@@ -29,7 +29,7 @@ from util.misc import NativeScalerWithGradNormCount as NativeScaler
 
 import models_convmae
 
-from engine_pretrain import train_one_epoch
+from engine_pretrain_pelvic import train_one_epoch
 import platform
 import sys
 import pdb
@@ -141,7 +141,6 @@ def main(args):
     data_loader_train = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
     
     # define the model
-    print(111, args.norm_pix_loss)####----
     model = models_convmae.__dict__[args.model](norm_pix_loss=args.norm_pix_loss)
 
     model.to(device)
