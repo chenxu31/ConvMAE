@@ -253,7 +253,7 @@ def convmae_convvit_base_patch16_dec512d8b(**kwargs):
 def convmae_convvit_small_patch16(**kwargs):
     model = MaskedAutoencoderConvViT(
         img_size=[256, 64, 32], patch_size=[4, 2, 2], embed_dim=[128, 256, 384], depth=[2, 2, 11], num_heads=12,
-        decoder_embed_dim=256, decoder_depth=4, decoder_num_heads=6,
+        decoder_embed_dim=256, decoder_depth=4, decoder_num_heads=8,
         mlp_ratio=[4, 4, 4], norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
