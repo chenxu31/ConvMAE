@@ -26,6 +26,7 @@ class MaskedAutoencoderConvViT(nn.Module):
         super().__init__()
         # --------------------------------------------------------------------------
 
+        self.in_chans = in_chans
         self.patch_size = img_size[0] // 16
 
         # ConvMAE encoder specifics
@@ -114,9 +115,9 @@ class MaskedAutoencoderConvViT(nn.Module):
         assert imgs.shape[2] == imgs.shape[3] and imgs.shape[2] % p == 0
 
         h = w = imgs.shape[2] // p
-        x = imgs.reshape(shape=(imgs.shape[0], 3, h, p, w, p))
+        x = imgs.reshape(shape=(imgs.shape[0], self.in_chans, h, p, w, p))
         x = torch.einsum('nchpwq->nhwpqc', x)
-        x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 3))
+        x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * self.in_chans))
         return x
 
     def unpatchify(self, x):
@@ -128,9 +129,9 @@ class MaskedAutoencoderConvViT(nn.Module):
         h = w = int(x.shape[1]**.5)
         assert h * w == x.shape[1]
         
-        x = x.reshape(shape=(x.shape[0], h, w, p, p, 3))
+        x = x.reshape(shape=(x.shape[0], h, w, p, p, self.in_chans))
         x = torch.einsum('nhwpqc->nchpwq', x)
-        imgs = x.reshape(shape=(x.shape[0], 3, h * p, h * p))
+        imgs = x.reshape(shape=(x.shape[0], self.in_chans, h * p, h * p))
         return imgs
 
     def random_masking(self, x, mask_ratio):
