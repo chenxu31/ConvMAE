@@ -50,7 +50,7 @@ def main(device, args):
         print(loss)
         ret = model.unpatchify(ret)
         ret = ret.cpu().detach().numpy()[0, 0, :, :]
-        ret = common_pelvic.data_restore(ret.clip(-1, 1))
+        ret = common_pelvic.data_restore(ret)
 
         skimage.io.imsave("ori.jpg", common_pelvic.data_restore(in_patch.cpu().detach().numpy()[0, 0, :, :]))#common_pelvic.data_restore(model.unpatchify(model.patchify(in_patch)).cpu().detach().numpy())[0, 0, :, :])
         skimage.io.imsave("syn.jpg", ret)
