@@ -26,7 +26,7 @@ class MaskedAutoencoderConvViT(nn.Module):
         super().__init__()
         # --------------------------------------------------------------------------
 
-        self.patch_size = img_size // 16
+        self.patch_size = img_size[0] // 16
 
         # ConvMAE encoder specifics
         self.patch_embed1 = PatchEmbed(
