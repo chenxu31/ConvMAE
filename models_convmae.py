@@ -25,6 +25,9 @@ class MaskedAutoencoderConvViT(nn.Module):
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False):
         super().__init__()
         # --------------------------------------------------------------------------
+
+        self.patch_size = img_size // 16
+
         # ConvMAE encoder specifics
         self.patch_embed1 = PatchEmbed(
                 img_size=img_size[0], patch_size=patch_size[0], in_chans=in_chans, embed_dim=embed_dim[0])
@@ -162,8 +165,8 @@ class MaskedAutoencoderConvViT(nn.Module):
     def forward_encoder(self, x, mask_ratio):
         # embed patches
         ids_keep, mask, ids_restore = self.random_masking(x, mask_ratio)
-        mask_for_patch1 = mask.reshape(-1, 14, 14).unsqueeze(-1).repeat(1, 1, 1, 16).reshape(-1, 14, 14, 4, 4).permute(0, 1, 3, 2, 4).reshape(x.shape[0], 56, 56).unsqueeze(1)
-        mask_for_patch2 = mask.reshape(-1, 14, 14).unsqueeze(-1).repeat(1, 1, 1, 4).reshape(-1, 14, 14, 2, 2).permute(0, 1, 3, 2, 4).reshape(x.shape[0], 28, 28).unsqueeze(1)
+        mask_for_patch1 = mask.reshape(-1, self.patch_size, self.patch_size).unsqueeze(-1).repeat(1, 1, 1, 16).reshape(-1, self.patch_size, self.patch_size, 4, 4).permute(0, 1, 3, 2, 4).reshape(x.shape[0], self.patch_size * 4, self.patch_size * 4).unsqueeze(1)
+        mask_for_patch2 = mask.reshape(-1, self.patch_size, self.patch_size).unsqueeze(-1).repeat(1, 1, 1, 4).reshape(-1, self.patch_size, self.patch_size, 2, 2).permute(0, 1, 3, 2, 4).reshape(x.shape[0], self.patch_size * 2, self.patch_size * 2).unsqueeze(1)
         x = self.patch_embed1(x)
         for blk in self.blocks1:
             x = blk(x, 1 - mask_for_patch1)
