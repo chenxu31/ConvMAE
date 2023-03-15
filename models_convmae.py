@@ -28,6 +28,7 @@ class MaskedAutoencoderConvViT(nn.Module):
 
         self.in_chans = in_chans
         self.img_size = img_size
+        self.patch_size = patch_size
 
         # ConvMAE encoder specifics
         self.patch_embed1 = PatchEmbed(
@@ -125,7 +126,7 @@ class MaskedAutoencoderConvViT(nn.Module):
         x: (N, L, patch_size**2 *3)
         imgs: (N, 3, H, W)
         """
-        p = self.patch_embed.patch_size[0]
+        p = 16#self.patch_size[0]
         h = w = int(x.shape[1]**.5)
         assert h * w == x.shape[1]
         

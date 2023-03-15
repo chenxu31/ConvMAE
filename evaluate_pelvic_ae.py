@@ -10,7 +10,6 @@ import numpy
 import platform
 import skimage.io
 import glob
-import utils
 import models_convmae
 
 
@@ -26,19 +25,18 @@ import common_net_pt as common_net
 
 
 def main(device, args):
-    model = models_convmae.__dict__[args.model](in_chans=args.n_slices, norm_pix_loss=args.norm_pix_loss)
+    model = models_convmae.__dict__[args.model](in_chans=args.n_slices)
     checkpoint = torch.load(args.checkpoint_file)
 
-    pdb.set_trace()
-    model.load_state_dict(checkpoint["model"])
+    model.load_state_dict(checkpoint["model"], strict=False)
 
     model.to(device)
     model.eval()
 
     if args.modality == "ct":
-        test_data, _, _, _ = common_pelvic.load_test_data(args.data_dir, do_new_normalize=True)
+        test_data, _, _, _ = common_pelvic.load_test_data(args.data_dir)
     elif args.modality == "cbct":
-        _, test_data, _, _ = common_pelvic.load_test_data(args.data_dir, do_new_normalize=True)
+        _, test_data, _, _ = common_pelvic.load_test_data(args.data_dir)
     else:
         assert 0
 
@@ -46,15 +44,13 @@ def main(device, args):
         os.makedirs(args.output_dir)
 
     with torch.no_grad():
-        in_patch = torch.from_numpy(test_data[0:1, 100:101, :, :]).to(device)
+        in_patch = torch.from_numpy(test_data[0:4, 100:101, :, :]).to(device)
 
         loss, ret, mask = model(in_patch, mask_ratio=args.mask_ratio)
         print(loss)
-
-        ret = model.unpatchify(ret.reshape(ret.shape[0], ret.shape[1], ret.shape[2]*ret.shape[3]).permute((0, 2, 1)))
-
+        ret = model.unpatchify(ret)
         ret = ret.cpu().detach().numpy()[0, 0, :, :]
-        ret = common_pelvic.data_restore(ret)
+        ret = common_pelvic.data_restore(ret.clip(-1, 1))
 
         skimage.io.imsave("ori.jpg", common_pelvic.data_restore(in_patch.cpu().detach().numpy()[0, 0, :, :]))#common_pelvic.data_restore(model.unpatchify(model.patchify(in_patch)).cpu().detach().numpy())[0, 0, :, :])
         skimage.io.imsave("syn.jpg", ret)
@@ -63,12 +59,14 @@ def main(device, args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--gpu', type=int, default=0, help="gpu device id")
+    parser.add_argument('--model', default='convmae_convvit_small_patch16', type=str, metavar='MODEL', help='Name of model to train')
     parser.add_argument('--data_dir', type=str, default=r'/home/chenxu/datasets/pelvic/h5_data_nonrigid', help='path of the dataset')
     parser.add_argument('--checkpoint_file', type=str, default=r'/home/chenxu/training/checkpoints/convnextv2/atto_ct/checkpoint-799.pth', help='path of the dataset')
     parser.add_argument('--mask_ratio', default=0.6, type=float, help='Masking ratio (percentage of removed patches).')
     parser.add_argument('--decoder_depth', type=int, default=1)
     parser.add_argument('--decoder_embed_dim', type=int, default=256)
     parser.add_argument('--output_dir', type=str, default='outputs', help="the output directory")
+    parser.add_argument('--n_slices', default=1, type=int, help='number of slices per training sample')
     parser.add_argument('--modality', type=str, default='ct', choices=["ct", "cbct"], help="the output directory")
 
     args = parser.parse_args()
