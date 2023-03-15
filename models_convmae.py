@@ -20,7 +20,7 @@ class MaskedAutoencoderConvViT(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
     """
     def __init__(self, img_size=224, patch_size=16, in_chans=3,
-                 embed_dim=1024, depth=24, num_heads=16,
+                 embed_dim=1024, depth=24, num_heads=16, clamp_out=False,
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False):
         super().__init__()
@@ -29,6 +29,7 @@ class MaskedAutoencoderConvViT(nn.Module):
         self.in_chans = in_chans
         self.img_size = img_size
         self.patch_size = patch_size
+        self.clamp_out = clamp_out
 
         # ConvMAE encoder specifics
         self.patch_embed1 = PatchEmbed(
@@ -215,6 +216,9 @@ class MaskedAutoencoderConvViT(nn.Module):
 
         # predictor projection
         x = self.decoder_pred(x)
+
+        if self.clamp_out:
+            x = torch.clamp(x, -1., 1.)
 
         return x
 

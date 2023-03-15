@@ -25,7 +25,7 @@ import common_net_pt as common_net
 
 
 def main(device, args):
-    model = models_convmae.__dict__[args.model](in_chans=args.n_slices)
+    model = models_convmae.__dict__[args.model](in_chans=args.n_slices, clamp_out=True)
     checkpoint = torch.load(args.checkpoint_file)
 
     model.load_state_dict(checkpoint["model"], strict=False)
@@ -44,7 +44,7 @@ def main(device, args):
         os.makedirs(args.output_dir)
 
     with torch.no_grad():
-        in_patch = torch.from_numpy(test_data[0:4, 100:101, :, :]).to(device)
+        in_patch = torch.from_numpy(test_data[0:1, 100:101, :, :]).to(device)
 
         loss, ret, mask = model(in_patch, mask_ratio=args.mask_ratio)
         print(loss)
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     parser.add_argument('--model', default='convmae_convvit_small_patch16', type=str, metavar='MODEL', help='Name of model to train')
     parser.add_argument('--data_dir', type=str, default=r'/home/chenxu/datasets/pelvic/h5_data_nonrigid', help='path of the dataset')
     parser.add_argument('--checkpoint_file', type=str, default=r'/home/chenxu/training/checkpoints/convnextv2/atto_ct/checkpoint-799.pth', help='path of the dataset')
-    parser.add_argument('--mask_ratio', default=0.6, type=float, help='Masking ratio (percentage of removed patches).')
+    parser.add_argument('--mask_ratio', default=0.75, type=float, help='Masking ratio (percentage of removed patches).')
     parser.add_argument('--decoder_depth', type=int, default=1)
     parser.add_argument('--decoder_embed_dim', type=int, default=256)
     parser.add_argument('--output_dir', type=str, default='outputs', help="the output directory")
