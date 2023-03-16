@@ -10,6 +10,7 @@ import numpy
 import platform
 import skimage.io
 import glob
+import vision_transformer
 import models_convmae
 
 
@@ -24,8 +25,52 @@ import common_pelvic_pt as common_pelvic
 import common_net_pt as common_net
 
 
+class ConvViT(vision_transformer.ConvViT):
+    """ Vision Transformer with support for global average pooling
+    """
+    def __init__(self, **kwargs):
+        super(ConvViT, self).__init__(**kwargs)
+
+    def forward_features(self, x):
+        B = x.shape[0]
+        x = self.patch_embed1(x)
+        x = self.pos_drop(x)
+        for blk in self.blocks1:
+            x = blk(x)
+        x = self.patch_embed2(x)
+        for blk in self.blocks2:
+            x = blk(x)
+        x = self.patch_embed3(x)
+        x = x.flatten(2).permute(0, 2, 1)
+        x = self.patch_embed4(x)
+        x = x + self.pos_embed
+        for blk in self.blocks3:
+            x = blk(x)
+
+        x = self.norm(x)
+        print(222, x.shape)
+
+        outcome = x[:, 0]
+        return outcome
+
+
+def convvit_small_patch16(**kwargs):
+    model = ConvViT(
+        img_size=[256, 64, 32], patch_size=[4, 2, 2], embed_dim=[128, 256, 384], depth=[2, 2, 11], num_heads=12, mlp_ratio=[4, 4, 4], qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+
+    """
+    img_size = [256, 64, 32], patch_size = [4, 2, 2], embed_dim = [128, 256, 384], depth = [2, 2, 11], num_heads = 12,
+    decoder_embed_dim = 256, decoder_depth = 4, decoder_num_heads = 8,
+    mlp_ratio = [4, 4, 4], norm_layer = partial(nn.LayerNorm, eps=1e-6), ** kwargs)
+    """
+
+    return model
+
+
 def main(device, args):
-    model = models_convmae.__dict__[args.model](in_chans=args.n_slices, clamp_out=True)
+    #model = models_convmae.__dict__[args.model](in_chans=args.n_slices, clamp_out=True)
+    model = ConvViT(in_chans=args.n_slices, clamp_out=True)
     checkpoint = torch.load(args.checkpoint_file)
 
     model.load_state_dict(checkpoint["model"], strict=False)
@@ -46,7 +91,8 @@ def main(device, args):
     with torch.no_grad():
         in_patch = torch.from_numpy(test_data[0:1, 100:101, :, :]).to(device)
 
-        loss, ret, mask = model(in_patch, mask_ratio=args.mask_ratio)
+        ret = model(in_patch, mask_ratio=args.mask_ratio)
+        pdb.set_trace()
         print(loss)
         ret = model.unpatchify(ret)
         ret = ret.cpu().detach().numpy()[0, 0, :, :]
