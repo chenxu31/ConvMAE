@@ -11,6 +11,7 @@ import platform
 import skimage.io
 import glob
 import vision_transformer
+from vision_transformer import PatchEmbed, Block, CBlock
 import models_convmae
 from functools import partial
 import torch.nn as nn
@@ -30,9 +31,19 @@ import common_net_pt as common_net
 class ConvViT(vision_transformer.ConvViT):
     """ Vision Transformer with support for global average pooling
     """
-    def __init__(self, clamp_out=False, **kwargs):
+    def __init__(self, decoder_embed_dim, decoder_num_heads, mlp_ratio, norm_layer, in_chans=1, clamp_out=False, **kwargs):
         super(ConvViT, self).__init__(**kwargs)
         self.clamp_out = clamp_out
+        self.decoder_embed = nn.Linear(embed_dim[-1], decoder_embed_dim, bias=True)
+
+        self.decoder_blocks = nn.ModuleList([
+            Block(decoder_embed_dim, decoder_num_heads, mlp_ratio[0], qkv_bias=True, qk_scale=None,
+                  norm_layer=norm_layer)
+            for i in range(decoder_depth)])
+
+        self.decoder_norm = norm_layer(decoder_embed_dim)
+        self.decoder_pred = nn.Linear(decoder_embed_dim,
+                                      (patch_size[0] * patch_size[1] * patch_size[2]) ** 2 * in_chans, bias=True)
 
     def forward_features(self, x):
         B = x.shape[0]
@@ -51,22 +62,40 @@ class ConvViT(vision_transformer.ConvViT):
             x = blk(x)
 
         x = self.norm(x)
-        print(222, x.shape)
+        return x
+        #print(222, x.shape)
 
-        outcome = x[:, 0]
-        return outcome
+        #outcome = x[:, 0]
+        #return outcome
+
+    def forward_decoder(self, x):
+        # embed tokens
+        x = self.decoder_embed(x)
+
+        # add pos embed
+        #x = x + self.decoder_pos_embed
+
+        # apply Transformer blocks
+        for blk in self.decoder_blocks:
+            x = blk(x)
+        x = self.decoder_norm(x)
+
+        # predictor projection
+        x = self.decoder_pred(x)
+
+        if self.clamp_out:
+            x = torch.clamp(x, -1., 1.)
+
+        return x
+
+    def forward(self, x):
+        return self.forward_decoder(self.forward_features(x))
 
 
 def convvit_small_patch16(**kwargs):
     model = ConvViT(
         img_size=[256, 64, 32], patch_size=[4, 2, 2], embed_dim=[128, 256, 384], depth=[2, 2, 11], num_heads=12, mlp_ratio=[4, 4, 4], qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
-
-    """
-    img_size = [256, 64, 32], patch_size = [4, 2, 2], embed_dim = [128, 256, 384], depth = [2, 2, 11], num_heads = 12,
-    decoder_embed_dim = 256, decoder_depth = 4, decoder_num_heads = 8,
-    mlp_ratio = [4, 4, 4], norm_layer = partial(nn.LayerNorm, eps=1e-6), ** kwargs)
-    """
+        decoder_embed_dim=256, decoder_depth=4, decoder_num_heads=8, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
 
     return model
 
