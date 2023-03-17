@@ -12,6 +12,8 @@ import skimage.io
 import glob
 import vision_transformer
 import models_convmae
+from functools import partial
+import torch.nn as nn
 
 
 if platform.system() == 'Windows':
@@ -28,8 +30,9 @@ import common_net_pt as common_net
 class ConvViT(vision_transformer.ConvViT):
     """ Vision Transformer with support for global average pooling
     """
-    def __init__(self, **kwargs):
+    def __init__(self, clamp_out=False, **kwargs):
         super(ConvViT, self).__init__(**kwargs)
+        self.clamp_out = clamp_out
 
     def forward_features(self, x):
         B = x.shape[0]
@@ -70,7 +73,7 @@ def convvit_small_patch16(**kwargs):
 
 def main(device, args):
     #model = models_convmae.__dict__[args.model](in_chans=args.n_slices, clamp_out=True)
-    model = ConvViT(in_chans=args.n_slices, clamp_out=True)
+    model = convvit_small_patch16(in_chans=args.n_slices, clamp_out=True)
     checkpoint = torch.load(args.checkpoint_file)
 
     model.load_state_dict(checkpoint["model"], strict=False)
@@ -91,7 +94,7 @@ def main(device, args):
     with torch.no_grad():
         in_patch = torch.from_numpy(test_data[0:1, 100:101, :, :]).to(device)
 
-        ret = model(in_patch, mask_ratio=args.mask_ratio)
+        ret = model(in_patch)
         pdb.set_trace()
         print(loss)
         ret = model.unpatchify(ret)
