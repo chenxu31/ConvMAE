@@ -32,7 +32,7 @@ class ConvViT(vision_transformer.ConvViT):
     """ Vision Transformer with support for global average pooling
     """
     def __init__(self, decoder_embed_dim, decoder_num_heads, mlp_ratio, norm_layer, decoder_depth, in_chans=1, clamp_out=False, **kwargs):
-        super(ConvViT, self).__init__(norm_layer=norm_layer, in_chans=in_chans, **kwargs)
+        super(ConvViT, self).__init__(norm_layer=norm_layer, in_chans=in_chans, mlp_ratio=mlp_ratio, **kwargs)
         self.clamp_out = clamp_out
         self.decoder_embed = nn.Linear(embed_dim[-1], decoder_embed_dim, bias=True)
 
