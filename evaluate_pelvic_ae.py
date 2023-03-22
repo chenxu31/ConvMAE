@@ -31,9 +31,10 @@ import common_net_pt as common_net
 class ConvViT(vision_transformer.ConvViT):
     """ Vision Transformer with support for global average pooling
     """
-    def __init__(self, decoder_embed_dim, decoder_num_heads, mlp_ratio, norm_layer, decoder_depth, in_chans=1, clamp_out=False, **kwargs):
-        super(ConvViT, self).__init__(norm_layer=norm_layer, in_chans=in_chans, mlp_ratio=mlp_ratio, **kwargs)
+    def __init__(self, img_size, patch_size, embed_dim, decoder_embed_dim, decoder_num_heads, mlp_ratio, norm_layer, decoder_depth, in_chans=1, clamp_out=False, **kwargs):
+        super(ConvViT, self).__init__(img_size=img_size, patch_size=patch_size, embed_dim=embed_dim, norm_layer=norm_layer, in_chans=in_chans, mlp_ratio=mlp_ratio, **kwargs)
         self.clamp_out = clamp_out
+        self.in_chans = in_chans
         self.decoder_embed = nn.Linear(embed_dim[-1], decoder_embed_dim, bias=True)
 
         self.decoder_blocks = nn.ModuleList([
@@ -44,6 +45,20 @@ class ConvViT(vision_transformer.ConvViT):
         self.decoder_norm = norm_layer(decoder_embed_dim)
         self.decoder_pred = nn.Linear(decoder_embed_dim,
                                       (patch_size[0] * patch_size[1] * patch_size[2]) ** 2 * in_chans, bias=True)
+  
+    def unpatchify(self, x):
+        """
+        x: (N, L, patch_size**2 *3)
+        imgs: (N, 3, H, W)
+        """
+        p = 16#self.patch_size[0]
+        h = w = int(x.shape[1]**.5)
+        assert h * w == x.shape[1]
+        
+        x = x.reshape(shape=(x.shape[0], h, w, p, p, self.in_chans))
+        x = torch.einsum('nhwpqc->nchpwq', x)
+        imgs = x.reshape(shape=(x.shape[0], self.in_chans, h * p, h * p))
+        return imgs
 
     def forward_features(self, x):
         B = x.shape[0]
@@ -79,10 +94,10 @@ class ConvViT(vision_transformer.ConvViT):
         # predictor projection
         x = self.decoder_pred(x)
 
-        pdb.set_trace()
-
         if self.clamp_out:
             x = torch.clamp(x, -1., 1.)
+
+        x = self.unpatchify(x)
 
         return x
 
@@ -122,9 +137,6 @@ def main(device, args):
         in_patch = torch.from_numpy(test_data[0:1, 100:101, :, :]).to(device)
 
         ret = model(in_patch)
-        pdb.set_trace()
-        print(loss)
-        ret = model.unpatchify(ret)
         ret = ret.cpu().detach().numpy()[0, 0, :, :]
         ret = common_pelvic.data_restore(ret)
 
