@@ -63,10 +63,6 @@ class ConvViT(vision_transformer.ConvViT):
 
         x = self.norm(x)
         return x
-        #print(222, x.shape)
-
-        #outcome = x[:, 0]
-        #return outcome
 
     def forward_decoder(self, x):
         # embed tokens
@@ -82,6 +78,8 @@ class ConvViT(vision_transformer.ConvViT):
 
         # predictor projection
         x = self.decoder_pred(x)
+
+        pdb.set_trace()
 
         if self.clamp_out:
             x = torch.clamp(x, -1., 1.)
